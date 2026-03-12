@@ -1,5 +1,7 @@
 # HPC Infrastructure Designer
 
+**[Try it live →](https://hpc-designer.onrender.com/)**
+
 An interactive, visual design tool for building and exploring high-performance computing (HPC) and AI infrastructure. Drag-and-drop NVIDIA GPUs, CPUs, NICs, DPUs, switches, cables, storage, and memory onto a canvas, connect them, and get real-time validation, performance estimates, and AI-powered design assistance.
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
@@ -258,4 +260,4 @@ In development, the Vite dev server proxies `/api` requests to the Express backe
 
 ## License
 
-This project is private and not licensed for redistribution.
+This project is licensed under the [Apache License 2.0](LICENSE).

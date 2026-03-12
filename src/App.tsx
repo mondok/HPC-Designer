@@ -19,6 +19,7 @@ import {
   Bot,
   BookOpen,
   X,
+  Github,
 } from 'lucide-react';
 
 const LAYER_LABELS: Record<DesignLayer, string> = {
@@ -461,6 +462,19 @@ export default function App() {
           )}
           {showAIChat && <AIChatPanel onClose={() => setShowAIChat(false)} />}
         </div>
+
+        {/* Footer */}
+        <footer className="h-7 bg-nvidia-dark border-t border-slate-700 flex items-center justify-end px-4 flex-shrink-0">
+          <a
+            href="https://github.com/mondok/HPC-Designer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <Github size={12} />
+            Open Source on GitHub
+          </a>
+        </footer>
 
         {showRefArchs && (
           <ReferenceArchitectureModal
