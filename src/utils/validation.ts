@@ -7,8 +7,8 @@ export function validateConnection(
   targetNode: Node,
   _edges: Edge[]
 ): ValidationResult | null {
-  const sourceComp = sourceNode.data?.component as HardwareComponent | undefined;
-  const targetComp = targetNode.data?.component as HardwareComponent | undefined;
+  const sourceComp = (sourceNode.data as any)?.component as HardwareComponent | undefined;
+  const targetComp = (targetNode.data as any)?.component as HardwareComponent | undefined;
 
   if (!sourceComp || !targetComp) return null;
 
@@ -119,10 +119,10 @@ function validateGpuToCpu(gpu: GPUComponent, cpu: CPUComponent): ValidationResul
 
 export function validateServerConfiguration(nodes: Node[], edges: Edge[]): ValidationResult[] {
   const results: ValidationResult[] = [];
-  const gpuNodes = nodes.filter((n) => n.data?.component?.category === 'gpu');
-  const cpuNodes = nodes.filter((n) => n.data?.component?.category === 'cpu');
-  const nicNodes = nodes.filter((n) => n.data?.component?.category === 'nic');
-  const memNodes = nodes.filter((n) => n.data?.component?.category === 'memory');
+  const gpuNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'gpu');
+  const cpuNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'cpu');
+  const nicNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'nic');
+  const memNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'memory');
 
   if (gpuNodes.length > 0 && cpuNodes.length === 0) {
     results.push({
@@ -131,15 +131,15 @@ export function validateServerConfiguration(nodes: Node[], edges: Edge[]): Valid
       message: 'GPUs require at least one CPU',
       explanation: 'Every GPU server needs at least one CPU. The CPU provides PCIe root ports that GPUs connect to, manages system memory, and runs the host OS and drivers.',
       suggestion: 'Add an NVIDIA Grace, Intel Xeon, or AMD EPYC CPU.',
-      affectedComponents: gpuNodes.map((n) => n.data?.component?.id).filter(Boolean) as string[],
+      affectedComponents: gpuNodes.map((n) => (n.data as any)?.component?.id).filter(Boolean) as string[],
     });
   }
 
   if (cpuNodes.length > 0 && gpuNodes.length > 0) {
-    const cpu = cpuNodes[0].data?.component as CPUComponent;
+    const cpu = (cpuNodes[0].data as any)?.component as CPUComponent;
     const totalGpus = gpuNodes.length;
     const minCores = totalGpus * 6;
-    const totalCpuCores = cpuNodes.reduce((sum, n) => sum + ((n.data?.component as CPUComponent)?.cores || 0), 0);
+    const totalCpuCores = cpuNodes.reduce((sum, n) => sum + (((n.data as any)?.component as CPUComponent)?.cores || 0), 0);
 
     if (totalCpuCores < minCores) {
       results.push({
@@ -148,7 +148,7 @@ export function validateServerConfiguration(nodes: Node[], edges: Edge[]): Valid
         message: `Insufficient CPU cores: ${totalCpuCores} cores for ${totalGpus} GPUs`,
         explanation: `NVIDIA certification requires minimum 6 physical CPU cores per GPU. You have ${totalCpuCores} cores for ${totalGpus} GPUs (need ${minCores}).`,
         suggestion: `Add more CPU sockets or use CPUs with more cores.`,
-        affectedComponents: [...cpuNodes.map((n) => n.data?.component?.id), ...gpuNodes.map((n) => n.data?.component?.id)].filter(Boolean) as string[],
+        affectedComponents: [...cpuNodes.map((n) => (n.data as any)?.component?.id), ...gpuNodes.map((n) => (n.data as any)?.component?.id)].filter(Boolean) as string[],
       });
     }
 
@@ -159,14 +159,14 @@ export function validateServerConfiguration(nodes: Node[], edges: Edge[]): Valid
         message: 'Single CPU socket with multiple GPUs',
         explanation: 'NVIDIA certification recommends minimum 2 CPU sockets. GPUs should be balanced across CPU sockets and PCIe root ports for optimal performance. A single socket creates a NUMA bottleneck — all GPU traffic flows through one memory controller.',
         suggestion: 'Add a second CPU socket for balanced PCIe topology.',
-        affectedComponents: cpuNodes.map((n) => n.data?.component?.id).filter(Boolean) as string[],
+        affectedComponents: cpuNodes.map((n) => (n.data as any)?.component?.id).filter(Boolean) as string[],
       });
     }
   }
 
   if (gpuNodes.length > 0 && memNodes.length > 0) {
-    const totalGpuMemory = gpuNodes.reduce((sum, n) => sum + ((n.data?.component as GPUComponent)?.memoryGB || 0), 0);
-    const totalSysMemory = memNodes.reduce((sum, n) => sum + ((n.data?.component as any)?.capacityGB || 0), 0);
+    const totalGpuMemory = gpuNodes.reduce((sum, n) => sum + (((n.data as any)?.component as GPUComponent)?.memoryGB || 0), 0);
+    const totalSysMemory = memNodes.reduce((sum, n) => sum + (((n.data as any)?.component as any)?.capacityGB || 0), 0);
 
     if (totalSysMemory < totalGpuMemory * 2) {
       results.push({
@@ -175,18 +175,18 @@ export function validateServerConfiguration(nodes: Node[], edges: Edge[]): Valid
         message: `Insufficient system memory: ${totalSysMemory}GB for ${totalGpuMemory}GB GPU memory`,
         explanation: `NVIDIA certification requires minimum 2x total GPU memory in system RAM. You have ${totalSysMemory}GB system memory but need at least ${totalGpuMemory * 2}GB (2x ${totalGpuMemory}GB GPU memory).`,
         suggestion: `Add more memory DIMMs to reach at least ${totalGpuMemory * 2}GB.`,
-        affectedComponents: memNodes.map((n) => n.data?.component?.id).filter(Boolean) as string[],
+        affectedComponents: memNodes.map((n) => (n.data as any)?.component?.id).filter(Boolean) as string[],
       });
     }
   }
 
   if (nicNodes.length > 0) {
-    const hasRoce = nicNodes.some((n) => (n.data?.component as NICComponent)?.roceSupport);
-    const switchNodes = nodes.filter((n) => n.data?.component?.category === 'switch');
-    const ethernetSwitches = switchNodes.filter((n) => (n.data?.component as any)?.switchType === 'ethernet');
+    const hasRoce = nicNodes.some((n) => ((n.data as any)?.component as NICComponent)?.roceSupport);
+    const switchNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'switch');
+    const ethernetSwitches = switchNodes.filter((n) => ((n.data as any)?.component as any)?.switchType === 'ethernet');
 
     if (hasRoce && ethernetSwitches.length > 0) {
-      const hasPfc = ethernetSwitches.every((n) => (n.data?.component as any)?.pfcSupport);
+      const hasPfc = ethernetSwitches.every((n) => ((n.data as any)?.component as any)?.pfcSupport);
       if (!hasPfc) {
         results.push({
           valid: false,
@@ -195,7 +195,7 @@ export function validateServerConfiguration(nodes: Node[], edges: Edge[]): Valid
           explanation: 'RDMA over Converged Ethernet (RoCE) requires a lossless network. This is achieved through Priority Flow Control (PFC) — a mechanism that pauses traffic on specific priority queues when switch buffers fill up. Without PFC, packet drops cause RDMA retransmissions that destroy performance. ECN (Explicit Congestion Notification) works alongside PFC to proactively signal senders to slow down before buffers overflow.',
           suggestion: 'Use NVIDIA Spectrum switches with PFC and ECN enabled.',
           documentationUrl: 'https://docs.nvidia.com/networking/',
-          affectedComponents: [...nicNodes, ...ethernetSwitches].map((n) => n.data?.component?.id).filter(Boolean) as string[],
+          affectedComponents: [...nicNodes, ...ethernetSwitches].map((n) => (n.data as any)?.component?.id).filter(Boolean) as string[],
         });
       }
     }

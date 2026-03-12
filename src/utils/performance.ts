@@ -154,17 +154,17 @@ export function estimatePerformance(
   numNodes: number = 1
 ): PerformanceEstimate[] {
   const estimates: PerformanceEstimate[] = [];
-  const gpuNodes = nodes.filter((n) => n.data?.component?.category === 'gpu');
-  const nicNodes = nodes.filter((n) => n.data?.component?.category === 'nic');
-  const memNodes = nodes.filter((n) => n.data?.component?.category === 'memory');
+  const gpuNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'gpu');
+  const nicNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'nic');
+  const memNodes = nodes.filter((n) => (n.data as any)?.component?.category === 'memory');
 
   if (gpuNodes.length === 0) return estimates;
 
-  const gpus = gpuNodes.map((n) => n.data.component as GPUComponent);
-  const nics = nicNodes.map((n) => n.data.component as NICComponent);
+  const gpus = gpuNodes.map((n) => (n.data as any).component as GPUComponent);
+  const nics = nicNodes.map((n) => (n.data as any).component as NICComponent);
   const totalGpus = gpus.length * numNodes;
   const primaryGpu = gpus[0];
-  const totalMemGB = memNodes.reduce((s, n) => s + ((n.data?.component as any)?.capacityGB || 0), 0);
+  const totalMemGB = memNodes.reduce((s, n) => s + (((n.data as any)?.component as any)?.capacityGB || 0), 0);
   const totalGpuMemGB = gpus.reduce((s, g) => s + g.memoryGB, 0);
 
   const { bottleneck, description } = detectBottleneck(gpus, nics, numNodes, totalMemGB, totalGpuMemGB);

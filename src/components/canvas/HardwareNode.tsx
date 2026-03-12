@@ -112,7 +112,7 @@ function HardwareNodeInner({ data, selected }: NodeProps) {
         {canDrillDown && (
           <button
             onClick={() => {
-              const nextLayer = component.category === 'server' ? 'pcie' : 'pcie';
+              const nextLayer = 'pcie';
               drillDown(component.id, nextLayer as any, component.name);
             }}
             className="ml-auto p-0.5 rounded hover:bg-white/10"
