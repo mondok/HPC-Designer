@@ -1,0 +1,110 @@
+latest.dump
+latest_local.dump
+.bundle
+db/*.sqlite3
+log/*
+log/*.log
+log/*.lck
+tmp/**/*
+# Rails
+.bundle
+db/*.sqlite3
+db/*.sqlite3-journal
+.byebug_history
+*.log
+tmp/**/*
+tmp/restart.txt
+tmp/always_restart.txt
+db/schema.rb
+tmp/routes_cache
+database.yml
+.sass-cache/
+# Documentation
+doc/api
+doc/app
+doc/*
+.yardoc
+.yardopts
+*.pdf
+*.dat
+.env
+dump.rdb
+solr/*
+tmp/*
+# Public Uploads
+public/system/*
+public/themes/*
+public/uploads/cache/*
+public/uploads/store/*
+node_modules
+
+# Public Cache
+public/javascripts/cache
+public/javascripts/cached
+public/stylesheets/cache
+public/stylesheets/cached
+public/javascripts/defaults.js
+/public/packs
+/public/assets
+/public/packs-test
+/node_modules
+/yarn-error.log
+yarn-debug.log*
+.yarn-integrity
+*.DS_Store
+.idea
+storage/
+
+# Vendor Cache
+vendor/cache
+
+# Acts as Indexed
+index/**/*
+
+# Refinery Specific
+*.tmproj
+*.autobackupbyrefinery.*
+/refinerycms-*.gem
+.autotest
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# NetBeans
+nbproject
+
+# Eclipse
+.project
+
+# Redcar
+.redcar
+
+# Rubinius
+*.rbc
+
+# Vim
+*.swp
+*.swo
+
+# RubyMine
+.idea
+
+# Backup
+*~
+
+# Capybara Bug
+capybara-*html
+
+# sass
+.sass-cache
+.sass-cache/*
+
+scratchpad
+
+coverage/**/*
+
+/node_modules
+/SecureEPLS
