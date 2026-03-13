@@ -1,48 +1,187 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useDesignStore } from '../../store/designStore';
-import { Bot, Send, X, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { getComponentById } from '../../data';
+import { Bot, Send, X, Loader2, Sparkles, Trash2, Play, Plus, Minus, Link } from 'lucide-react';
+import { Node } from '@xyflow/react';
+
+interface DesignAction {
+  action: 'add_component' | 'remove_component' | 'connect';
+  componentId?: string;
+  x?: number;
+  y?: number;
+  nodeId?: string;
+  sourceNodeId?: string;
+  targetNodeId?: string;
+  label?: string;
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  actions?: DesignAction[];
+  actionsApplied?: boolean;
 }
 
-const SYSTEM_PROMPT = `You are an expert NVIDIA HPC infrastructure architect and educator. The user is designing HPC server infrastructure using a drag-and-drop tool. They will share their design as JSON and ask questions.
+function parseActions(content: string): { text: string; actions: DesignAction[] } {
+  const actionsRegex = /```actions\s*\n([\s\S]*?)\n```/g;
+  let actions: DesignAction[] = [];
+  let text = content;
 
-Your expertise covers:
-- NVIDIA GPUs (Hopper H100/H200, Ada Lovelace L40S/L4, Ampere A100, Turing T4)
-- NVIDIA Grace CPUs and NVLink-C2C
-- ConnectX NICs (ConnectX-6/7), BlueField DPUs
-- InfiniBand (NDR 400G, Quantum-2 switches) and RoCE/Ethernet (Spectrum-4)
-- PCIe Gen4/Gen5 topology, NVLink/NVSwitch
-- RDMA, PFC, ECN, lossless Ethernet configuration
-- Distributed training (data/tensor/pipeline parallelism)
-- AI workload optimization and bottleneck analysis
+  let match;
+  while ((match = actionsRegex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (Array.isArray(parsed)) {
+        actions = [...actions, ...parsed];
+      }
+    } catch (e) {
+      // Invalid JSON, skip
+    }
+    text = text.replace(match[0], '');
+  }
 
-When answering:
-1. Be specific about bandwidths, latencies, and protocols
-2. Point out any design issues or bottlenecks
-3. Suggest improvements with reasoning
-4. Reference NVIDIA certification requirements when relevant
-5. Use technical terminology but explain it when first introduced
-6. Keep responses concise but thorough`;
+  return { text: text.trim(), actions };
+}
+
+function ActionPreview({ actions, onApply, applied }: { actions: DesignAction[]; onApply: () => void; applied: boolean }) {
+  const getActionIcon = (action: DesignAction) => {
+    switch (action.action) {
+      case 'add_component': return <Plus size={10} className="text-green-400" />;
+      case 'remove_component': return <Minus size={10} className="text-red-400" />;
+      case 'connect': return <Link size={10} className="text-blue-400" />;
+    }
+  };
+
+  const getActionLabel = (action: DesignAction) => {
+    switch (action.action) {
+      case 'add_component': {
+        const comp = action.componentId ? getComponentById(action.componentId) : null;
+        return `Add ${comp?.name || action.componentId}`;
+      }
+      case 'remove_component':
+        return `Remove node ${action.nodeId}`;
+      case 'connect':
+        return `Connect ${action.sourceNodeId} → ${action.targetNodeId}${action.label ? ` (${action.label})` : ''}`;
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-lg border border-nvidia-green/30 bg-nvidia-green/5 p-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-semibold text-nvidia-green uppercase tracking-wide">Suggested Changes</span>
+        <span className="text-[9px] text-slate-500">{actions.length} action{actions.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="space-y-1 mb-2">
+        {actions.map((action, i) => (
+          <div key={i} className="flex items-center gap-1.5 text-[10px] text-slate-300">
+            {getActionIcon(action)}
+            <span>{getActionLabel(action)}</span>
+          </div>
+        ))}
+      </div>
+      {applied ? (
+        <div className="text-[10px] text-nvidia-green font-medium flex items-center gap-1">
+          ✓ Changes applied
+        </div>
+      ) : (
+        <button
+          onClick={onApply}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-nvidia-green text-black text-[10px] font-semibold rounded hover:bg-nvidia-green/90 transition-colors"
+        >
+          <Play size={10} />
+          Apply Changes
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function AIChatPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const exportToJSON = useDesignStore((s) => s.exportToJSON);
+  const nodes = useDesignStore((s) => s.nodes);
+  const edges = useDesignStore((s) => s.edges);
+  const configName = useDesignStore((s) => s.configName);
+  const workloadType = useDesignStore((s) => s.workloadType);
+  const currentLayer = useDesignStore((s) => s.currentLayer);
+  const addNode = useDesignStore((s) => s.addNode);
+  const removeNode = useDesignStore((s) => s.removeNode);
+  const onConnect = useDesignStore((s) => s.onConnect);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const applyActions = useCallback((actions: DesignAction[], messageIndex: number) => {
+    for (const action of actions) {
+      switch (action.action) {
+        case 'add_component': {
+          if (!action.componentId) break;
+          const component = getComponentById(action.componentId);
+          if (!component) break;
+          const newNode: Node = {
+            id: `${component.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            type: 'hardware',
+            position: { x: action.x ?? 200, y: action.y ?? 200 },
+            data: { component, label: component.name },
+          };
+          addNode(newNode);
+          break;
+        }
+        case 'remove_component': {
+          if (!action.nodeId) break;
+          removeNode(action.nodeId);
+          break;
+        }
+        case 'connect': {
+          if (!action.sourceNodeId || !action.targetNodeId) break;
+          onConnect({
+            source: action.sourceNodeId,
+            target: action.targetNodeId,
+            sourceHandle: null,
+            targetHandle: null,
+          });
+          break;
+        }
+      }
+    }
+    // Mark actions as applied
+    setMessages(prev => prev.map((m, i) =>
+      i === messageIndex ? { ...m, actionsApplied: true } : m
+    ));
+  }, [addNode, removeNode, onConnect]);
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const designJson = exportToJSON();
+    // Build a compact design summary for the AI (avoid sending full component specs)
+    const compactDesign = {
+      name: configName,
+      workloadType,
+      layer: currentLayer,
+      nodes: nodes.map((n) => {
+        const comp = (n.data as any)?.component;
+        return {
+          nodeId: n.id,
+          componentId: comp?.id,
+          name: comp?.name,
+          category: comp?.category,
+          vendor: comp?.vendor,
+          position: n.position,
+        };
+      }),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: (e as any).label || undefined,
+      })),
+    };
+    const designJson = JSON.stringify(compactDesign, null, 2);
+
     const userMessage = input.trim();
     setInput('');
 
@@ -55,7 +194,6 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
 
     try {
       const apiMessages = [
-        { role: 'system', content: SYSTEM_PROMPT },
         { role: 'system', content: `Current design JSON:\n${designJson}` },
         ...newMessages.map(m => ({ role: m.role, content: m.content })),
       ];
@@ -72,9 +210,22 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
       }
 
       const data = await response.json();
-      const assistantMessage = data.choices?.[0]?.message?.content || 'No response received.';
+      const rawContent = data.choices?.[0]?.message?.content;
+      if (!rawContent) {
+        const reason = data.choices?.[0]?.finish_reason;
+        const errorDetail = reason === 'length'
+          ? 'The response was too long and got cut off. Try a more specific question.'
+          : `Unexpected API response (finish_reason: ${reason || 'unknown'}). Response: ${JSON.stringify(data).slice(0, 300)}`;
+        throw new Error(errorDetail);
+      }
+      const { text, actions } = parseActions(rawContent);
 
-      setMessages([...newMessages, { role: 'assistant', content: assistantMessage }]);
+      setMessages([...newMessages, {
+        role: 'assistant',
+        content: text,
+        actions: actions.length > 0 ? actions : undefined,
+        actionsApplied: false,
+      }]);
     } catch (err: any) {
       setMessages([
         ...newMessages,
@@ -99,6 +250,7 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
     'Explain the networking topology choices',
     'What PCIe bandwidth is available per GPU?',
     'Should I use InfiniBand or RoCE for this?',
+    'Add an InfiniBand switch to connect my NICs',
   ];
 
   return (
@@ -161,9 +313,18 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               {msg.role === 'assistant' ? (
-                <div className="prose-sm prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:mb-2 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:mb-0.5 [&_code]:bg-slate-700/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-nvidia-green [&_code]:text-[10px] [&_pre]:bg-slate-800 [&_pre]:rounded [&_pre]:p-2 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-slate-200 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-slate-200 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-slate-300 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_strong]:text-slate-100 [&_a]:text-nvidia-accent [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-nvidia-green/40 [&_blockquote]:pl-2 [&_blockquote]:text-slate-400 [&_hr]:border-slate-700 [&_hr]:my-2">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
+                <>
+                  <div className="prose-sm prose-invert max-w-none [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:mb-2 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:mb-0.5 [&_code]:bg-slate-700/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-nvidia-green [&_code]:text-[10px] [&_pre]:bg-slate-800 [&_pre]:rounded [&_pre]:p-2 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-slate-200 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-slate-200 [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-slate-300 [&_h3]:mt-1.5 [&_h3]:mb-1 [&_strong]:text-slate-100 [&_a]:text-nvidia-accent [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-nvidia-green/40 [&_blockquote]:pl-2 [&_blockquote]:text-slate-400 [&_hr]:border-slate-700 [&_hr]:my-2">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                  {msg.actions && msg.actions.length > 0 && (
+                    <ActionPreview
+                      actions={msg.actions}
+                      onApply={() => applyActions(msg.actions!, i)}
+                      applied={!!msg.actionsApplied}
+                    />
+                  )}
+                </>
               ) : (
                 <div className="whitespace-pre-wrap">{msg.content}</div>
               )}
