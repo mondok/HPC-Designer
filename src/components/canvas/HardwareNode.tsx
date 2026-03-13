@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { HardwareComponent, GPUComponent, CPUComponent, NICComponent } from '../../types/components';
+import { HardwareComponent, GPUComponent, CPUComponent, NICComponent, NodeUtilization } from '../../types/components';
 import { useDesignStore } from '../../store/designStore';
 import { Cpu, CircuitBoard, Network, Shield, GitBranch, Cable, HardDrive, MemoryStick, Workflow, Server, MonitorDot, Maximize2 } from 'lucide-react';
 
@@ -75,13 +75,49 @@ function getShortSpec(comp: HardwareComponent): string {
   return '';
 }
 
-function HardwareNodeInner({ data, selected }: NodeProps) {
+function utilBarColor(v: number): string {
+  if (v < 0.5) return '#76B900';
+  if (v < 0.8) return '#F59E0B';
+  return '#EF4444';
+}
+
+function UtilBar({ label, value }: { label: string; value: number }) {
+  if (value < 0.01) return null;
+  const pct = Math.round(value * 100);
+  return (
+    <div className="flex items-center gap-1 text-[8px]">
+      <span className="text-slate-500 w-6">{label}</span>
+      <div className="flex-1 h-1 bg-slate-700 rounded-full">
+        <div
+          className="h-1 rounded-full transition-all duration-500"
+          style={{ width: `${Math.min(100, pct)}%`, backgroundColor: utilBarColor(value) }}
+        />
+      </div>
+      <span className="text-slate-400 w-6 text-right">{pct}%</span>
+    </div>
+  );
+}
+
+function HardwareNodeInner({ data, selected, id: nodeId }: NodeProps) {
   const component = data.component as HardwareComponent;
   const drillDown = useDesignStore((s) => s.drillDown);
   const currentLayer = useDesignStore((s) => s.currentLayer);
+  const simulationMode = useDesignStore((s) => s.simulationMode);
+  const simulationResults = useDesignStore((s) => s.simulationResults);
   const color = CATEGORY_COLORS[component.category] || '#6B7280';
   const cat = component.category as string;
   const canDrillDown = cat === 'server' || (currentLayer === 'server' && cat === 'gpu');
+
+  const nodeUtil: NodeUtilization | undefined = useMemo(() => {
+    if (!simulationMode || !simulationResults) return undefined;
+    return simulationResults.nodeUtils.find((u) => u.nodeId === nodeId);
+  }, [simulationMode, simulationResults, nodeId]);
+
+  const glowColor = useMemo(() => {
+    if (!nodeUtil) return undefined;
+    const maxUtil = Math.max(nodeUtil.computeUtil, nodeUtil.memoryUtil, nodeUtil.ioUtil);
+    return utilBarColor(maxUtil);
+  }, [nodeUtil]);
 
   return (
     <div
@@ -89,9 +125,11 @@ function HardwareNodeInner({ data, selected }: NodeProps) {
         selected ? 'shadow-xl ring-2 ring-offset-1 ring-offset-nvidia-darker' : ''
       }`}
       style={{
-        borderColor: selected ? color : `${color}55`,
+        borderColor: simulationMode && glowColor ? glowColor : selected ? color : `${color}55`,
         backgroundColor: '#1A1A2E',
-        boxShadow: selected ? `0 0 20px ${color}33` : undefined,
+        boxShadow: simulationMode && glowColor
+          ? `0 0 16px ${glowColor}44`
+          : selected ? `0 0 20px ${color}33` : undefined,
       }}
     >
       <Handle
@@ -134,6 +172,15 @@ function HardwareNodeInner({ data, selected }: NodeProps) {
           </div>
         )}
       </div>
+
+      {/* Simulation utilization overlay */}
+      {simulationMode && nodeUtil && (
+        <div className="px-3 py-1.5 border-t border-slate-700/50 space-y-0.5">
+          <UtilBar label="CPU" value={nodeUtil.computeUtil} />
+          <UtilBar label="Mem" value={nodeUtil.memoryUtil} />
+          <UtilBar label="I/O" value={nodeUtil.ioUtil} />
+        </div>
+      )}
 
       <Handle
         type="source"

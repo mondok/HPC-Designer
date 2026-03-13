@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Node, Edge, OnNodesChange, OnEdgesChange, applyNodeChanges, applyEdgeChanges, Connection, addEdge } from '@xyflow/react';
-import { DesignLayer, HardwareComponent, ValidationResult, WorkloadType } from '../types/components';
+import { DesignLayer, HardwareComponent, ValidationResult, WorkloadType, SimulationParams, SimulationResults } from '../types/components';
+import { DEFAULT_SIMULATION_PARAMS } from '../utils/simulation';
 
 export interface DesignState {
   currentLayer: DesignLayer;
@@ -15,6 +16,9 @@ export interface DesignState {
   showPerformancePanel: boolean;
   showValidationPanel: boolean;
   draggedComponent: HardwareComponent | null;
+  simulationMode: boolean;
+  simulationParams: SimulationParams;
+  simulationResults: SimulationResults | null;
 
   setCurrentLayer: (layer: DesignLayer) => void;
   pushBreadcrumb: (layer: DesignLayer, label: string, nodeId?: string) => void;
@@ -35,6 +39,9 @@ export interface DesignState {
   toggleValidationPanel: () => void;
   setDraggedComponent: (component: HardwareComponent | null) => void;
   drillDown: (nodeId: string, layer: DesignLayer, label: string) => void;
+  setSimulationMode: (on: boolean) => void;
+  setSimulationParams: (params: SimulationParams) => void;
+  setSimulationResults: (results: SimulationResults | null) => void;
   exportToJSON: () => string;
   saveToLocalStorage: () => void;
   loadFromLocalStorage: () => void;
@@ -53,6 +60,9 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   showPerformancePanel: false,
   showValidationPanel: true,
   draggedComponent: null,
+  simulationMode: false,
+  simulationParams: DEFAULT_SIMULATION_PARAMS,
+  simulationResults: null,
 
   setCurrentLayer: (layer) => set({ currentLayer: layer }),
 
@@ -113,6 +123,10 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   togglePerformancePanel: () => set((state) => ({ showPerformancePanel: !state.showPerformancePanel })),
   toggleValidationPanel: () => set((state) => ({ showValidationPanel: !state.showValidationPanel })),
   setDraggedComponent: (component) => set({ draggedComponent: component }),
+
+  setSimulationMode: (on) => set({ simulationMode: on, simulationResults: on ? get().simulationResults : null }),
+  setSimulationParams: (params) => set({ simulationParams: params }),
+  setSimulationResults: (results) => set({ simulationResults: results }),
 
   drillDown: (nodeId, layer, label) => {
     const state = get();

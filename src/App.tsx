@@ -5,6 +5,7 @@ import { ComponentPalette } from './components/palette/ComponentPalette';
 import { DesignCanvas } from './components/canvas/DesignCanvas';
 import { ValidationPanel } from './components/panels/ValidationPanel';
 import { AIChatPanel } from './components/panels/AIChatPanel';
+import { SimulationPanel } from './components/panels/SimulationPanel';
 import { DesignLayer, WorkloadType } from './types/components';
 import { buildReferenceArchitectures, ReferenceArchitecture } from './data/referenceArchitectures';
 import {
@@ -20,6 +21,7 @@ import {
   BookOpen,
   X,
   Github,
+  Activity,
 } from 'lucide-react';
 
 const LAYER_LABELS: Record<DesignLayer, string> = {
@@ -262,6 +264,8 @@ export default function App() {
   const setNodes = useDesignStore((s) => s.setNodes);
   const setEdges = useDesignStore((s) => s.setEdges);
 
+  const simulationMode = useDesignStore((s) => s.simulationMode);
+  const setSimulationMode = useDesignStore((s) => s.setSimulationMode);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showRefArchs, setShowRefArchs] = useState(false);
   const [activeArch, setActiveArch] = useState<ReferenceArchitecture | null>(null);
@@ -385,6 +389,13 @@ export default function App() {
             >
               <Bot className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setSimulationMode(!simulationMode)}
+              className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${simulationMode ? 'text-nvidia-green bg-slate-700/50' : 'text-slate-400 hover:text-nvidia-green'}`}
+              title="Simulation Mode"
+            >
+              <Activity className="w-4 h-4" />
+            </button>
 
             <div className="h-4 w-px bg-slate-700 mx-0.5" />
 
@@ -443,7 +454,7 @@ export default function App() {
             <ValidationPanel />
           </div>
 
-          {!showAIChat && (
+          {!showAIChat && !simulationMode && (
             <div className="w-72 bg-nvidia-dark border-l border-slate-700 flex flex-col overflow-hidden">
               {activeArch && showRationale && <DesignRationalePanel arch={activeArch} onDismiss={() => setShowRationale(false)} />}
               {activeArch && !showRationale && (
@@ -460,7 +471,8 @@ export default function App() {
               </div>
             </div>
           )}
-          {showAIChat && <AIChatPanel onClose={() => setShowAIChat(false)} />}
+          {showAIChat && !simulationMode && <AIChatPanel onClose={() => setShowAIChat(false)} />}
+          {simulationMode && <SimulationPanel onClose={() => setSimulationMode(false)} />}
         </div>
 
         {/* Footer */}

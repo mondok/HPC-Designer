@@ -248,3 +248,83 @@ export interface PCIeSlot {
   occupiedBy?: string;
   componentType?: ComponentCategory;
 }
+
+// Simulation types
+
+export type SimulationWorkloadTab = 'training' | 'inference' | 'storage';
+
+export interface TrainingParams {
+  modelSizeBillion: number;
+  batchSize: number;
+  tensorParallelism: number;
+  dataParallelism: number;
+  pipelineParallelism: number;
+  gradientAccumulationSteps: number;
+}
+
+export interface InferenceParams {
+  requestRateQps: number;
+  sequenceLength: number;
+  kvCacheSizeGB: number;
+}
+
+export interface StorageIOParams {
+  checkpointIntervalSteps: number;
+  datasetSizeGB: number;
+  prefetchBuffers: number;
+}
+
+export interface SimulationParams {
+  activeTab: SimulationWorkloadTab;
+  training: TrainingParams;
+  inference: InferenceParams;
+  storageIO: StorageIOParams;
+}
+
+export type FlowDataType = 'gradient' | 'activation' | 'data_load' | 'inference_request' | 'checkpoint';
+
+export interface EdgeFlow {
+  edgeId: string;
+  bandwidthGBps: number;
+  utilization: number;
+  dataType: FlowDataType;
+  active: boolean;
+}
+
+export interface NodeUtilization {
+  nodeId: string;
+  computeUtil: number;
+  memoryUtil: number;
+  ioUtil: number;
+  category: ComponentCategory;
+}
+
+export interface SimulationResults {
+  edgeFlows: EdgeFlow[];
+  nodeUtils: NodeUtilization[];
+  aggregateMetrics: AggregateMetrics;
+  bottleneckChain: BottleneckLink[];
+  activePaths: string[];
+}
+
+export interface AggregateMetrics {
+  throughput: number;
+  throughputUnit: string;
+  gpuUtilPercent: number;
+  memoryPressurePercent: number;
+  networkUtilPercent: number;
+  storageIOUtilPercent: number;
+  timeToTrainHours?: number;
+  p50LatencyMs?: number;
+  p99LatencyMs?: number;
+  bottleneck?: 'compute' | 'memory' | 'network' | 'storage' | 'pcie';
+  bottleneckDescription?: string;
+}
+
+export interface BottleneckLink {
+  edgeId?: string;
+  nodeId?: string;
+  type: 'compute' | 'memory' | 'network' | 'storage' | 'pcie';
+  description: string;
+  utilization: number;
+}

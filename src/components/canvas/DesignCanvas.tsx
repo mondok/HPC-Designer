@@ -12,6 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useDesignStore } from '../../store/designStore';
 import { HardwareNode } from './HardwareNode';
+import { AnimatedFlowEdge } from './AnimatedFlowEdge';
 import { HardwareComponent } from '../../types/components';
 import { validateServerConfiguration } from '../../utils/validation';
 import { Legend } from '../panels/Legend';
@@ -19,6 +20,7 @@ import { EdgeInfoPanel } from '../panels/EdgeInfoPanel';
 import { NodeInfoPanel } from '../panels/NodeInfoPanel';
 
 const nodeTypes = { hardware: HardwareNode };
+const edgeTypes = { 'animated-flow': AnimatedFlowEdge };
 
 export function DesignCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -36,6 +38,7 @@ export function DesignCanvas() {
   const setSelectedComponent = useDesignStore((s) => s.setSelectedComponent);
   const setValidationResults = useDesignStore((s) => s.setValidationResults);
   const currentLayer = useDesignStore((s) => s.currentLayer);
+  const simulationMode = useDesignStore((s) => s.simulationMode);
 
   useEffect(() => {
     const results = validateServerConfiguration(nodes, edges);
@@ -105,11 +108,21 @@ export function DesignCanvas() {
     pcie: 'Assign components to PCIe slots and configure the bus topology',
   };
 
+  // When simulation is active, swap all edges to use the animated-flow edge type
+  const displayEdges = useMemo(() => {
+    if (!simulationMode) return edges;
+    return edges.map((e) => ({
+      ...e,
+      type: 'animated-flow',
+      animated: false, // our custom edge handles its own animation
+    }));
+  }, [edges, simulationMode]);
+
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -119,12 +132,13 @@ export function DesignCanvas() {
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         snapToGrid
         snapGrid={[15, 15]}
         defaultEdgeOptions={{
-          type: 'smoothstep',
-          animated: true,
+          type: simulationMode ? 'animated-flow' : 'smoothstep',
+          animated: !simulationMode,
           style: { stroke: '#76B900', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
