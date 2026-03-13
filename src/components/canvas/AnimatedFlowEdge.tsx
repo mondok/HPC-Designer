@@ -18,6 +18,7 @@ export function AnimatedFlowEdge({
   style,
 }: EdgeProps) {
   const simulationResults = useDesignStore((s) => s.simulationResults);
+  const paused = useDesignStore((s) => s.simulationPaused);
   const edgeFlow = simulationResults?.edgeFlows.find((f) => f.edgeId === id);
 
   const utilization = edgeFlow?.utilization ?? 0;
@@ -70,7 +71,7 @@ export function AnimatedFlowEdge({
       />
 
       {/* SVG animated particles */}
-      {active && numParticles > 0 && (
+      {active && numParticles > 0 && !paused && (
         <g>
           {Array.from({ length: numParticles }).map((_, i) => (
             <circle

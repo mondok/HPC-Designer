@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Node, Edge, OnNodesChange, OnEdgesChange, applyNodeChanges, applyEdgeChanges, Connection, addEdge } from '@xyflow/react';
 import { DesignLayer, HardwareComponent, ValidationResult, WorkloadType, SimulationParams, SimulationResults } from '../types/components';
-import { DEFAULT_SIMULATION_PARAMS } from '../utils/simulation';
+import { DEFAULT_SIMULATION_PARAMS, runSimulation } from '../utils/simulation';
 
 export interface DesignState {
   currentLayer: DesignLayer;
@@ -17,6 +17,7 @@ export interface DesignState {
   showValidationPanel: boolean;
   draggedComponent: HardwareComponent | null;
   simulationMode: boolean;
+  simulationPaused: boolean;
   simulationParams: SimulationParams;
   simulationResults: SimulationResults | null;
 
@@ -40,6 +41,7 @@ export interface DesignState {
   setDraggedComponent: (component: HardwareComponent | null) => void;
   drillDown: (nodeId: string, layer: DesignLayer, label: string) => void;
   setSimulationMode: (on: boolean) => void;
+  setSimulationPaused: (paused: boolean) => void;
   setSimulationParams: (params: SimulationParams) => void;
   setSimulationResults: (results: SimulationResults | null) => void;
   exportToJSON: () => string;
@@ -61,6 +63,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   showValidationPanel: true,
   draggedComponent: null,
   simulationMode: false,
+  simulationPaused: false,
   simulationParams: DEFAULT_SIMULATION_PARAMS,
   simulationResults: null,
 
@@ -124,7 +127,17 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   toggleValidationPanel: () => set((state) => ({ showValidationPanel: !state.showValidationPanel })),
   setDraggedComponent: (component) => set({ draggedComponent: component }),
 
-  setSimulationMode: (on) => set({ simulationMode: on, simulationResults: on ? get().simulationResults : null }),
+  setSimulationMode: (on) => {
+    if (on) {
+      // Eagerly compute results so animation starts immediately
+      const { nodes, edges, simulationParams } = get();
+      const results = runSimulation(nodes, edges, simulationParams);
+      set({ simulationMode: true, simulationPaused: false, simulationResults: results });
+    } else {
+      set({ simulationMode: false, simulationResults: null });
+    }
+  },
+  setSimulationPaused: (paused) => set({ simulationPaused: paused }),
   setSimulationParams: (params) => set({ simulationParams: params }),
   setSimulationResults: (results) => set({ simulationResults: results }),
 

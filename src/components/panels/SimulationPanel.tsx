@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { X, Activity, Cpu, HardDrive, Network, MemoryStick, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { X, Activity, Cpu, HardDrive, Network, MemoryStick, AlertTriangle, Clock, Zap, Play, Pause } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
 import { runSimulation } from '../../utils/simulation';
 import { SimulationParams, SimulationWorkloadTab } from '../../types/components';
@@ -118,12 +118,15 @@ export function SimulationPanel({ onClose }: { onClose: () => void }) {
   const results = useDesignStore((s) => s.simulationResults);
   const setParams = useDesignStore((s) => s.setSimulationParams);
   const setResults = useDesignStore((s) => s.setSimulationResults);
+  const paused = useDesignStore((s) => s.simulationPaused);
+  const setPaused = useDesignStore((s) => s.setSimulationPaused);
 
-  // Re-run simulation when params or graph change
+  // Re-run simulation when params or graph change (unless paused)
   useEffect(() => {
+    if (paused) return;
     const r = runSimulation(nodes, edges, params);
     setResults(r);
-  }, [nodes, edges, params, setResults]);
+  }, [nodes, edges, params, paused, setResults]);
 
   const update = useCallback(
     (patch: Partial<SimulationParams>) => {
@@ -163,10 +166,36 @@ export function SimulationPanel({ onClose }: { onClose: () => void }) {
           <Activity size={16} />
           Simulation
         </h3>
-        <button onClick={onClose} className="p-1 rounded hover:bg-slate-700 text-slate-400">
-          <X size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPaused(!paused)}
+            className={`p-1 rounded transition-colors ${
+              paused
+                ? 'bg-nvidia-green/20 text-nvidia-green hover:bg-nvidia-green/30'
+                : 'hover:bg-slate-700 text-slate-400 hover:text-yellow-400'
+            }`}
+            title={paused ? 'Resume simulation' : 'Pause simulation'}
+          >
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-slate-700 text-slate-400">
+            <X size={14} />
+          </button>
+        </div>
       </div>
+
+      {paused && (
+        <div className="px-3 py-1.5 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center gap-2">
+          <Pause size={10} className="text-yellow-400" />
+          <span className="text-[10px] text-yellow-400 font-medium">Simulation paused</span>
+          <button
+            onClick={() => setPaused(false)}
+            className="ml-auto text-[10px] text-nvidia-green hover:underline"
+          >
+            Resume
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {/* Workload tabs */}

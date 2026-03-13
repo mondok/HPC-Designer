@@ -76,7 +76,23 @@ An integrated chat panel powered by OpenAI that:
 - Receives the full design JSON as context
 - Answers questions about your architecture
 - Suggests optimizations and identifies potential issues
+- Can propose canvas modifications (add/remove/connect components) with an "Apply Changes" button
 - Renders responses in formatted Markdown
+
+### Data Flow Simulation
+A full interactive simulation mode that visualizes data flowing through your design:
+- **Animated edges** — SVG particles flow along connections, with speed and count proportional to bandwidth utilization
+- **Color-coded utilization** — green (<50%), yellow (50–80%), red (>80%) on both edges and node borders
+- **Node utilization overlays** — CPU, memory, and I/O utilization bars appear on every component
+- **Three workload tabs**:
+  - **Training** — model size, batch size, tensor/data/pipeline parallelism, gradient accumulation
+  - **Inference** — request rate (qps), sequence length, KV-cache sizing
+  - **Storage I/O** — checkpoint interval, dataset size, prefetch buffers
+- **Live gauges** — GPU utilization, memory pressure, network utilization, storage I/O
+- **Key metrics** — throughput (tokens/sec or qps), time-to-train, P50/P99 latency
+- **Bottleneck detection** — identifies the slowest link (compute, memory, network, storage, PCIe) with a description
+
+Toggle simulation mode with the **Activity** (pulse) icon in the toolbar. Adjust sliders and watch the canvas update in real-time.
 
 ### Additional UI Features
 - **Color-coded legend** — collapsible, shows category colors and icons
@@ -192,17 +208,23 @@ hpc_design/
     │                           #   save/load, export/import)
     ├── utils/
     │   ├── validation.ts       # Real-time design validation engine
-    │   └── performance.ts      # Performance estimation + bottleneck detection
+    │   ├── performance.ts      # Performance estimation + bottleneck detection
+    │   └── simulation.ts       # Data flow simulation engine (training,
+    │                           #   inference, storage I/O)
     └── components/
         ├── canvas/
         │   ├── DesignCanvas.tsx    # React Flow canvas with drag-drop,
         │   │                       #   node/edge click handlers
-        │   └── HardwareNode.tsx    # Custom node renderer with category styling
+        │   ├── HardwareNode.tsx    # Custom node renderer with category styling
+        │   │                       #   and simulation utilization overlays
+        │   └── AnimatedFlowEdge.tsx # Custom edge with animated particles,
+        │                           #   color-coded utilization, bandwidth labels
         ├── palette/
         │   ├── ComponentPalette.tsx  # Left sidebar component browser
         │   └── ComponentCard.tsx    # Individual draggable component card
         └── panels/
             ├── AIChatPanel.tsx      # AI assistant with Markdown rendering
+            ├── SimulationPanel.tsx  # Simulation controls, sliders, gauges
             ├── EdgeInfoPanel.tsx    # Connection detail popup
             ├── NodeInfoPanel.tsx    # Component detail popup
             ├── Legend.tsx           # Collapsible color-coded legend
@@ -225,7 +247,7 @@ The AI chat uses `gpt-5.4` by default. To change the model, edit `server.js`:
 
 ```js
 model: 'gpt-5.4',           // Change to 'gpt-4o', 'gpt-4o-mini', etc.
-max_completion_tokens: 2000, // Adjust response length
+max_completion_tokens: 4000, // Adjust response length
 ```
 
 ### Vite Proxy
@@ -255,6 +277,16 @@ In development, the Vite dev server proxies `/api` requests to the Express backe
 1. Click the **🤖 AI Assistant** button in the toolbar
 2. Ask questions about your current design
 3. The AI receives the full design JSON as context and can explain component choices, suggest improvements, or identify bottlenecks
+4. When the AI suggests canvas changes, review the action preview and click **"Apply Changes"** to execute them
+
+### Using the Simulation Mode
+1. Build a design on the canvas (or load a reference architecture)
+2. Click the **⚡ Activity** (pulse) icon in the toolbar
+3. Select a workload tab: **Training**, **Inference**, or **Storage I/O**
+4. Adjust sliders (model size, batch size, parallelism, request rate, etc.)
+5. Watch animated data flow on edges and utilization bars on nodes update in real-time
+6. Check the **gauges** for GPU, memory, network, and storage utilization
+7. Read the **bottleneck indicator** to identify the slowest link in your design
 
 ---
 
