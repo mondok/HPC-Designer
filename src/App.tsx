@@ -1,6 +1,6 @@
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { useDesignStore } from './store/designStore';
+import { useDesignStore, SidebarPanel } from './store/designStore';
 import { ComponentPalette } from './components/palette/ComponentPalette';
 import { DesignCanvas } from './components/canvas/DesignCanvas';
 import { ValidationPanel } from './components/panels/ValidationPanel';
@@ -22,6 +22,9 @@ import {
   X,
   Github,
   Activity,
+  Settings2,
+  ChevronDown,
+  Info,
 } from 'lucide-react';
 
 const LAYER_LABELS: Record<DesignLayer, string> = {
@@ -140,20 +143,16 @@ function PropertiesPanel() {
   );
 }
 
-function DesignRationalePanel({ arch, onDismiss }: { arch: ReferenceArchitecture; onDismiss: () => void }) {
+function DesignRationalePanel({ arch }: { arch: ReferenceArchitecture }) {
   return (
-    <div className="border-b border-slate-700 bg-gradient-to-b from-nvidia-green/5 to-transparent flex-shrink-0 max-h-[50%] overflow-y-auto">
+    <div className="flex-1 overflow-y-auto">
       <div className="px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[10px] font-semibold text-nvidia-green uppercase tracking-wide flex items-center gap-1.5">
-            <BookOpen size={11} />
-            Why This Design Works
-          </h3>
-          <button onClick={onDismiss} className="p-0.5 rounded hover:bg-slate-700 text-slate-500 hover:text-slate-300">
-            <X size={12} />
-          </button>
-        </div>
-        <p className="text-[10px] font-medium text-slate-300 mb-2">{arch.name}</p>
+        <h3 className="text-[10px] font-semibold text-nvidia-green uppercase tracking-wide flex items-center gap-1.5 mb-2">
+          <BookOpen size={11} />
+          Why This Design Works
+        </h3>
+        <p className="text-xs font-medium text-slate-300 mb-3">{arch.name}</p>
+        <p className="text-[10px] text-slate-400 mb-3">{arch.description}</p>
         <div className="text-[10px] text-slate-400 leading-relaxed space-y-2 [&_strong]:text-slate-200 [&_strong]:font-semibold">
           {arch.designRationale.split('**').map((part, i) =>
             i % 2 === 1
@@ -161,10 +160,65 @@ function DesignRationalePanel({ arch, onDismiss }: { arch: ReferenceArchitecture
               : <span key={i}>{part}</span>
           )}
         </div>
+        <div className="flex flex-wrap gap-1 mt-4">
+          {arch.tags.map((tag, i) => (
+            <span key={i} className="text-[9px] px-1.5 py-0.5 bg-nvidia-green/10 text-nvidia-green rounded">{tag}</span>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
+
+function FileMenu({ onSave, onExport, onImport, onClear }: { onSave: () => void; onExport: () => void; onImport: () => void; onClear: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`p-1.5 rounded hover:bg-slate-700 transition-colors flex items-center gap-0.5 ${open ? 'text-nvidia-green bg-slate-700/50' : 'text-slate-400 hover:text-nvidia-green'}`}
+        title="File actions"
+      >
+        <Settings2 className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-44 bg-nvidia-dark border border-slate-700 rounded-lg shadow-xl z-50 py-1">
+          <button onClick={() => { onSave(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-nvidia-green transition-colors">
+            <Save size={12} /> Save to Browser
+          </button>
+          <button onClick={() => { onExport(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-nvidia-green transition-colors">
+            <Download size={12} /> Export JSON
+          </button>
+          <button onClick={() => { onImport(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-nvidia-green transition-colors">
+            <Upload size={12} /> Import JSON
+          </button>
+          <div className="my-1 border-t border-slate-700" />
+          <button onClick={() => { onClear(); setOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-red-400 transition-colors">
+            <Trash2 size={12} /> Clear Canvas
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SIDEBAR_TABS: { id: SidebarPanel; icon: React.ReactNode; label: string }[] = [
+  { id: 'properties', icon: <Info size={13} />, label: 'Properties' },
+  { id: 'rationale', icon: <BookOpen size={13} />, label: 'Rationale' },
+  { id: 'ai', icon: <Bot size={13} />, label: 'AI' },
+  { id: 'simulation', icon: <Activity size={13} />, label: 'Simulate' },
+];
 
 function PerformancePanel() {
   const showPerformancePanel = useDesignStore((s) => s.showPerformancePanel);
@@ -264,12 +318,10 @@ export default function App() {
   const setNodes = useDesignStore((s) => s.setNodes);
   const setEdges = useDesignStore((s) => s.setEdges);
 
-  const simulationMode = useDesignStore((s) => s.simulationMode);
-  const setSimulationMode = useDesignStore((s) => s.setSimulationMode);
-  const [showAIChat, setShowAIChat] = useState(false);
+  const activeSidebarPanel = useDesignStore((s) => s.activeSidebarPanel);
+  const setActiveSidebarPanel = useDesignStore((s) => s.setActiveSidebarPanel);
   const [showRefArchs, setShowRefArchs] = useState(false);
   const [activeArch, setActiveArch] = useState<ReferenceArchitecture | null>(null);
-  const [showRationale, setShowRationale] = useState(true);
   const referenceArchitectures = useMemo(() => buildReferenceArchitectures(), []);
 
   const handleLoadArch = useCallback((arch: ReferenceArchitecture) => {
@@ -278,9 +330,9 @@ export default function App() {
     setNodes(arch.nodes);
     setEdges(arch.edges);
     setActiveArch(arch);
-    setShowRationale(true);
+    setActiveSidebarPanel('rationale');
     setShowRefArchs(false);
-  }, [setConfigName, setCurrentLayer, setNodes, setEdges]);
+  }, [setConfigName, setCurrentLayer, setNodes, setEdges, setActiveSidebarPanel]);
 
   const handleExport = useCallback(() => {
     const json = exportToJSON();
@@ -382,20 +434,6 @@ export default function App() {
             >
               <BookOpen className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => setShowAIChat(!showAIChat)}
-              className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${showAIChat ? 'text-nvidia-green bg-slate-700/50' : 'text-slate-400 hover:text-nvidia-green'}`}
-              title="AI Design Assistant"
-            >
-              <Bot className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setSimulationMode(!simulationMode)}
-              className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${simulationMode ? 'text-nvidia-green bg-slate-700/50' : 'text-slate-400 hover:text-nvidia-green'}`}
-              title="Simulation Mode"
-            >
-              <Activity className="w-4 h-4" />
-            </button>
 
             <div className="h-4 w-px bg-slate-700 mx-0.5" />
 
@@ -413,34 +451,15 @@ export default function App() {
             >
               <ShieldCheck className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => { saveToLocalStorage(); }}
-              className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-nvidia-green transition-colors"
-              title="Save to Local Storage"
-            >
-              <Save className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleExport}
-              className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-nvidia-green transition-colors"
-              title="Export JSON"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleImport}
-              className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-nvidia-green transition-colors"
-              title="Import JSON"
-            >
-              <Upload className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleClear}
-              className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"
-              title="Clear Canvas"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+            <FileMenu
+              onSave={() => saveToLocalStorage()}
+              onExport={handleExport}
+              onImport={handleImport}
+              onClear={handleClear}
+            />
           </div>
         </header>
 
@@ -454,25 +473,52 @@ export default function App() {
             <ValidationPanel />
           </div>
 
-          {!showAIChat && !simulationMode && (
-            <div className="w-72 bg-nvidia-dark border-l border-slate-700 flex flex-col overflow-hidden">
-              {activeArch && showRationale && <DesignRationalePanel arch={activeArch} onDismiss={() => setShowRationale(false)} />}
-              {activeArch && !showRationale && (
+          {/* Right sidebar with tab bar */}
+          <div className="w-96 bg-nvidia-dark border-l border-slate-700 flex flex-col overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex border-b border-slate-700 flex-shrink-0">
+              {SIDEBAR_TABS.map((tab) => (
                 <button
-                  onClick={() => setShowRationale(true)}
-                  className="w-full px-4 py-2 border-b border-slate-700 flex items-center gap-1.5 text-[10px] text-nvidia-green hover:bg-nvidia-green/5 transition-colors"
+                  key={tab.id}
+                  onClick={() => setActiveSidebarPanel(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                    activeSidebarPanel === tab.id
+                      ? 'text-nvidia-green border-b-2 border-nvidia-green bg-nvidia-green/5'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                  }`}
+                  title={tab.label}
                 >
-                  <BookOpen size={11} />
-                  Show Design Rationale
+                  {tab.icon}
+                  {tab.label}
                 </button>
-              )}
+              ))}
+            </div>
+
+            {/* Panel content */}
+            {activeSidebarPanel === 'properties' && (
               <div className="flex-1 overflow-y-auto">
                 <PropertiesPanel />
               </div>
-            </div>
-          )}
-          {showAIChat && !simulationMode && <AIChatPanel onClose={() => setShowAIChat(false)} />}
-          {simulationMode && <SimulationPanel onClose={() => setSimulationMode(false)} />}
+            )}
+            {activeSidebarPanel === 'rationale' && (
+              activeArch
+                ? <DesignRationalePanel arch={activeArch} />
+                : <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center">
+                      <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                      <p className="text-xs text-slate-500">Load a reference architecture to see its design rationale.</p>
+                      <button
+                        onClick={() => setShowRefArchs(true)}
+                        className="mt-3 px-3 py-1.5 text-[10px] font-semibold text-nvidia-green border border-nvidia-green/30 rounded hover:bg-nvidia-green/10 transition-colors"
+                      >
+                        Browse Architectures
+                      </button>
+                    </div>
+                  </div>
+            )}
+            {activeSidebarPanel === 'ai' && <AIChatPanel />}
+            {activeSidebarPanel === 'simulation' && <SimulationPanel />}
+          </div>
         </div>
 
         {/* Footer */}

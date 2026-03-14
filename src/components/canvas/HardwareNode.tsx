@@ -102,7 +102,7 @@ function HardwareNodeInner({ data, selected, id: nodeId }: NodeProps) {
   const component = data.component as HardwareComponent;
   const drillDown = useDesignStore((s) => s.drillDown);
   const currentLayer = useDesignStore((s) => s.currentLayer);
-  const simulationMode = useDesignStore((s) => s.simulationMode);
+  const simulationMode = useDesignStore((s) => s.activeSidebarPanel === 'simulation');
   const simulationResults = useDesignStore((s) => s.simulationResults);
   const color = CATEGORY_COLORS[component.category] || '#6B7280';
   const cat = component.category as string;

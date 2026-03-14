@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { X, Activity, Cpu, HardDrive, Network, MemoryStick, AlertTriangle, Clock, Zap, Play, Pause } from 'lucide-react';
+import { Activity, Cpu, HardDrive, Network, MemoryStick, AlertTriangle, Clock, Zap, Play, Pause } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
 import { runSimulation } from '../../utils/simulation';
 import { SimulationParams, SimulationWorkloadTab } from '../../types/components';
@@ -111,7 +111,7 @@ const TABS: { id: SimulationWorkloadTab; label: string }[] = [
   { id: 'storage', label: 'Storage I/O' },
 ];
 
-export function SimulationPanel({ onClose }: { onClose: () => void }) {
+export function SimulationPanel() {
   const nodes = useDesignStore((s) => s.nodes);
   const edges = useDesignStore((s) => s.edges);
   const params = useDesignStore((s) => s.simulationParams);
@@ -159,41 +159,29 @@ export function SimulationPanel({ onClose }: { onClose: () => void }) {
   const metrics = results?.aggregateMetrics;
 
   return (
-    <div className="w-80 bg-nvidia-dark border-l border-slate-700 flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 py-2.5 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
-        <h3 className="text-sm font-semibold text-nvidia-green flex items-center gap-2">
-          <Activity size={16} />
-          Simulation
-        </h3>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setPaused(!paused)}
-            className={`p-1 rounded transition-colors ${
-              paused
-                ? 'bg-nvidia-green/20 text-nvidia-green hover:bg-nvidia-green/30'
-                : 'hover:bg-slate-700 text-slate-400 hover:text-yellow-400'
-            }`}
-            title={paused ? 'Resume simulation' : 'Pause simulation'}
-          >
-            {paused ? <Play size={14} /> : <Pause size={14} />}
-          </button>
-          <button onClick={onClose} className="p-1 rounded hover:bg-slate-700 text-slate-400">
-            <X size={14} />
-          </button>
-        </div>
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Pause/play bar */}
+      <div className="px-3 py-1 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+        <span className="text-[10px] text-slate-500">
+          {paused ? 'Paused' : 'Running'}
+        </span>
+        <button
+          onClick={() => setPaused(!paused)}
+          className={`p-1 rounded transition-colors flex items-center gap-1 text-[10px] ${
+            paused
+              ? 'bg-nvidia-green/20 text-nvidia-green hover:bg-nvidia-green/30'
+              : 'hover:bg-slate-700 text-slate-400 hover:text-yellow-400'
+          }`}
+          title={paused ? 'Resume simulation' : 'Pause simulation'}
+        >
+          {paused ? <><Play size={10} /> Resume</> : <><Pause size={10} /> Pause</>}
+        </button>
       </div>
 
       {paused && (
         <div className="px-3 py-1.5 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center gap-2">
           <Pause size={10} className="text-yellow-400" />
-          <span className="text-[10px] text-yellow-400 font-medium">Simulation paused</span>
-          <button
-            onClick={() => setPaused(false)}
-            className="ml-auto text-[10px] text-nvidia-green hover:underline"
-          >
-            Resume
-          </button>
+          <span className="text-[10px] text-yellow-400 font-medium">Simulation paused — sliders won't update until resumed</span>
         </div>
       )}
 

@@ -3,6 +3,15 @@ import { Node, Edge, OnNodesChange, OnEdgesChange, applyNodeChanges, applyEdgeCh
 import { DesignLayer, HardwareComponent, ValidationResult, WorkloadType, SimulationParams, SimulationResults } from '../types/components';
 import { DEFAULT_SIMULATION_PARAMS, runSimulation } from '../utils/simulation';
 
+export type SidebarPanel = 'properties' | 'rationale' | 'ai' | 'simulation';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  actions?: any[];
+  actionsApplied?: boolean;
+}
+
 export interface DesignState {
   currentLayer: DesignLayer;
   breadcrumbs: { layer: DesignLayer; label: string; nodeId?: string }[];
@@ -16,10 +25,11 @@ export interface DesignState {
   showPerformancePanel: boolean;
   showValidationPanel: boolean;
   draggedComponent: HardwareComponent | null;
-  simulationMode: boolean;
+  activeSidebarPanel: SidebarPanel;
   simulationPaused: boolean;
   simulationParams: SimulationParams;
   simulationResults: SimulationResults | null;
+  chatMessages: ChatMessage[];
 
   setCurrentLayer: (layer: DesignLayer) => void;
   pushBreadcrumb: (layer: DesignLayer, label: string, nodeId?: string) => void;
@@ -40,10 +50,12 @@ export interface DesignState {
   toggleValidationPanel: () => void;
   setDraggedComponent: (component: HardwareComponent | null) => void;
   drillDown: (nodeId: string, layer: DesignLayer, label: string) => void;
-  setSimulationMode: (on: boolean) => void;
+  setActiveSidebarPanel: (panel: SidebarPanel) => void;
   setSimulationPaused: (paused: boolean) => void;
   setSimulationParams: (params: SimulationParams) => void;
   setSimulationResults: (results: SimulationResults | null) => void;
+  setChatMessages: (messages: ChatMessage[]) => void;
+  clearChatMessages: () => void;
   exportToJSON: () => string;
   saveToLocalStorage: () => void;
   loadFromLocalStorage: () => void;
@@ -62,10 +74,11 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   showPerformancePanel: false,
   showValidationPanel: true,
   draggedComponent: null,
-  simulationMode: false,
+  activeSidebarPanel: 'properties' as SidebarPanel,
   simulationPaused: false,
   simulationParams: DEFAULT_SIMULATION_PARAMS,
   simulationResults: null,
+  chatMessages: [],
 
   setCurrentLayer: (layer) => set({ currentLayer: layer }),
 
@@ -127,19 +140,21 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   toggleValidationPanel: () => set((state) => ({ showValidationPanel: !state.showValidationPanel })),
   setDraggedComponent: (component) => set({ draggedComponent: component }),
 
-  setSimulationMode: (on) => {
-    if (on) {
+  setActiveSidebarPanel: (panel) => {
+    if (panel === 'simulation') {
       // Eagerly compute results so animation starts immediately
       const { nodes, edges, simulationParams } = get();
       const results = runSimulation(nodes, edges, simulationParams);
-      set({ simulationMode: true, simulationPaused: false, simulationResults: results });
+      set({ activeSidebarPanel: panel, simulationPaused: false, simulationResults: results });
     } else {
-      set({ simulationMode: false, simulationResults: null });
+      set({ activeSidebarPanel: panel, simulationResults: null });
     }
   },
   setSimulationPaused: (paused) => set({ simulationPaused: paused }),
   setSimulationParams: (params) => set({ simulationParams: params }),
   setSimulationResults: (results) => set({ simulationResults: results }),
+  setChatMessages: (messages) => set({ chatMessages: messages }),
+  clearChatMessages: () => set({ chatMessages: [] }),
 
   drillDown: (nodeId, layer, label) => {
     const state = get();

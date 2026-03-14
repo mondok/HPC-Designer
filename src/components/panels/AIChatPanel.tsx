@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useDesignStore } from '../../store/designStore';
+import { useDesignStore, ChatMessage } from '../../store/designStore';
 import { getComponentById } from '../../data';
-import { Bot, Send, X, Loader2, Sparkles, Trash2, Play, Plus, Minus, Link } from 'lucide-react';
+import { Bot, Send, Loader2, Sparkles, Trash2, Play, Plus, Minus, Link } from 'lucide-react';
 import { Node } from '@xyflow/react';
 
 interface DesignAction {
@@ -14,13 +14,6 @@ interface DesignAction {
   sourceNodeId?: string;
   targetNodeId?: string;
   label?: string;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  actions?: DesignAction[];
-  actionsApplied?: boolean;
 }
 
 function parseActions(content: string): { text: string; actions: DesignAction[] } {
@@ -97,8 +90,10 @@ function ActionPreview({ actions, onApply, applied }: { actions: DesignAction[];
   );
 }
 
-export function AIChatPanel({ onClose }: { onClose: () => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function AIChatPanel() {
+  const messages = useDesignStore((s) => s.chatMessages);
+  const setMessages = useDesignStore((s) => s.setChatMessages);
+  const clearMessages = useDesignStore((s) => s.clearChatMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -149,10 +144,10 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
       }
     }
     // Mark actions as applied
-    setMessages(prev => prev.map((m, i) =>
+    setMessages(messages.map((m, i) =>
       i === messageIndex ? { ...m, actionsApplied: true } : m
     ));
-  }, [addNode, removeNode, onConnect]);
+  }, [addNode, removeNode, onConnect, messages, setMessages]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -254,26 +249,19 @@ export function AIChatPanel({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="w-96 bg-nvidia-dark border-l border-slate-700 flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 py-2.5 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
-        <h3 className="text-sm font-semibold text-nvidia-green flex items-center gap-2">
-          <Bot size={16} />
-          AI Design Assistant
-        </h3>
-        <div className="flex items-center gap-1">
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Action bar */}
+      {messages.length > 0 && (
+        <div className="px-3 py-1 border-b border-slate-700 flex items-center justify-end flex-shrink-0">
           <button
-            onClick={() => setMessages([])}
-            className="p-1 rounded hover:bg-slate-700 text-slate-400"
+            onClick={clearMessages}
+            className="p-1 rounded hover:bg-slate-700 text-slate-400 flex items-center gap-1 text-[10px]"
             title="Clear chat"
           >
-            <Trash2 size={12} />
-          </button>
-          <button onClick={onClose} className="p-1 rounded hover:bg-slate-700 text-slate-400">
-            <X size={14} />
+            <Trash2 size={10} /> Clear
           </button>
         </div>
-      </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">

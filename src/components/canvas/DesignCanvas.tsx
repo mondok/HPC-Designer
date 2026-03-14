@@ -17,7 +17,6 @@ import { HardwareComponent } from '../../types/components';
 import { validateServerConfiguration } from '../../utils/validation';
 import { Legend } from '../panels/Legend';
 import { EdgeInfoPanel } from '../panels/EdgeInfoPanel';
-import { NodeInfoPanel } from '../panels/NodeInfoPanel';
 
 const nodeTypes = { hardware: HardwareNode };
 const edgeTypes = { 'animated-flow': AnimatedFlowEdge };
@@ -26,7 +25,6 @@ export function DesignCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   const nodes = useDesignStore((s) => s.nodes);
   const edges = useDesignStore((s) => s.edges);
@@ -38,7 +36,8 @@ export function DesignCanvas() {
   const setSelectedComponent = useDesignStore((s) => s.setSelectedComponent);
   const setValidationResults = useDesignStore((s) => s.setValidationResults);
   const currentLayer = useDesignStore((s) => s.currentLayer);
-  const simulationMode = useDesignStore((s) => s.simulationMode);
+  const simulationMode = useDesignStore((s) => s.activeSidebarPanel === 'simulation');
+  const setActiveSidebarPanel = useDesignStore((s) => s.setActiveSidebarPanel);
 
   useEffect(() => {
     const results = validateServerConfiguration(nodes, edges);
@@ -78,10 +77,10 @@ export function DesignCanvas() {
     (_: React.MouseEvent, node: Node) => {
       setSelectedNodeId(node.id);
       setSelectedComponent(node.data?.component as HardwareComponent);
-      setSelectedNode(node);
       setSelectedEdge(null);
+      setActiveSidebarPanel('properties');
     },
-    [setSelectedNodeId, setSelectedComponent]
+    [setSelectedNodeId, setSelectedComponent, setActiveSidebarPanel]
   );
 
   const onEdgeClick = useCallback(
@@ -97,7 +96,6 @@ export function DesignCanvas() {
     setSelectedNodeId(null);
     setSelectedComponent(null);
     setSelectedEdge(null);
-    setSelectedNode(null);
   }, [setSelectedNodeId, setSelectedComponent]);
 
   const layerLabels: Record<string, string> = {
@@ -167,13 +165,6 @@ export function DesignCanvas() {
           sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
           targetNode={nodes.find((n) => n.id === selectedEdge.target)}
           onClose={() => setSelectedEdge(null)}
-        />
-      )}
-
-      {selectedNode && !selectedEdge && (
-        <NodeInfoPanel
-          node={selectedNode}
-          onClose={() => { setSelectedNode(null); setSelectedNodeId(null); setSelectedComponent(null); }}
         />
       )}
 
