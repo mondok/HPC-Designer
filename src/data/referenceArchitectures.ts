@@ -240,25 +240,35 @@ export function buildReferenceArchitectures(): ReferenceArchitecture[] {
     });
   }
 
-  // 7. RoCE Ethernet Cluster (Spectrum-4)
+  // 7. RoCE Ethernet Cluster (Spectrum-4) — 4 server nodes
   {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
+    // Top-of-Rack Spectrum-4 switch
     const sw = makeNode('switch-sn5600', 350, 50, 'roce-sw');
     if (sw) nodes.push(sw);
+    // 4 server nodes, each with GPU + CPU + NIC
     for (let i = 0; i < 4; i++) {
-      const nic = makeNode('nic-cx7-100g', 50 + i * 220, 280, `roce-nic-${i}`);
-      if (nic && sw) {
-        nodes.push(nic);
-        edges.push(makeEdge(sw.id, nic.id, 'RoCEv2 100G Ethernet'));
-      }
+      const xOff = 50 + i * 240;
+      const gpu = makeNode('gpu-h100-pcie', xOff, 500, `roce-gpu-${i}`);
+      const cpu = makeNode('cpu-xeon-emr', xOff, 350, `roce-cpu-${i}`);
+      const nic = makeNode('nic-cx6dx-100g', xOff, 200, `roce-nic-${i}`);
+      if (gpu) nodes.push(gpu);
+      if (cpu) nodes.push(cpu);
+      if (nic) nodes.push(nic);
+      // NIC ↔ Switch
+      if (nic && sw) edges.push(makeEdge(sw.id, nic.id, 'RoCEv2 100G'));
+      // CPU ↔ NIC
+      if (cpu && nic) edges.push(makeEdge(cpu.id, nic.id, 'PCIe Gen4'));
+      // GPU ↔ CPU
+      if (gpu && cpu) edges.push(makeEdge(gpu.id, cpu.id, 'PCIe Gen5 x16'));
     }
 
     archs.push({
       id: 'roce-cluster',
       name: 'RoCE Ethernet Cluster (4-Node)',
-      description: 'Spectrum-4 switch with RoCEv2 and PFC for lossless RDMA over Ethernet. Good balance of cost and performance for medium-scale training.',
-      designRationale: '**Why Ethernet instead of InfiniBand?** Ethernet switches cost 30-50% less than IB, and most data center teams already know Ethernet. For clusters under 32 nodes, the performance gap is manageable. **Why RoCE?** RoCEv2 adds RDMA capability to Ethernet, achieving latencies close to IB (~1-2μs vs 0.6μs). **What\'s PFC?** Priority Flow Control makes Ethernet lossless — required for RDMA. Without PFC, packet drops cause RDMA failures. **Tradeoff:** Easier to integrate with existing Ethernet infrastructure, but requires careful PFC/ECN tuning to avoid congestion storms at scale.',
+      description: 'Four GPU servers connected via a Spectrum-4 ToR switch using RoCEv2 with PFC for lossless RDMA over Ethernet. Good balance of cost and performance for medium-scale training.',
+      designRationale: '**Why Ethernet instead of InfiniBand?** Ethernet switches cost 30-50% less than IB, and most data center teams already know Ethernet. For clusters under 32 nodes, the performance gap is manageable. **Why RoCE?** RoCEv2 adds RDMA capability to Ethernet, achieving latencies close to IB (~1-2μs vs 0.6μs). **What\'s PFC?** Priority Flow Control makes Ethernet lossless — required for RDMA. Without PFC, packet drops cause RDMA failures. **Why one GPU per node?** This is a cost-effective configuration for DL training with data parallelism — each node trains on a different batch and synchronizes gradients via all-reduce over the RoCE fabric. **Tradeoff:** Easier to integrate with existing Ethernet infrastructure, but requires careful PFC/ECN tuning to avoid congestion storms at scale.',
       workloadType: 'dl_training',
       layer: 'cluster',
       tags: ['RoCE', 'Ethernet', 'Spectrum-4', 'PFC', 'Lossless'],
