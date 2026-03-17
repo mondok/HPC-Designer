@@ -37,6 +37,7 @@ public/themes/*
 public/uploads/cache/*
 public/uploads/store/*
 node_modules
+dist
 
 # Public Cache
 public/javascripts/cache

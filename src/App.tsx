@@ -25,6 +25,12 @@ import {
   Settings2,
   ChevronDown,
   Info,
+  Sparkles,
+  MousePointerClick,
+  Cpu,
+  Network,
+  Zap,
+  PlayCircle,
 } from 'lucide-react';
 
 const LAYER_LABELS: Record<DesignLayer, string> = {
@@ -264,6 +270,95 @@ function PerformancePanel() {
   );
 }
 
+function WelcomeModal({ archs, onLoadArch, onStartBlank }: { archs: ReferenceArchitecture[]; onLoadArch: (arch: ReferenceArchitecture) => void; onStartBlank: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="bg-nvidia-dark border border-slate-700 rounded-xl shadow-2xl w-[780px] max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 text-center">
+          <div className="w-12 h-12 bg-nvidia-green rounded-xl flex items-center justify-center mx-auto mb-3">
+            <Layers className="w-7 h-7 text-black" />
+          </div>
+          <h1 className="text-lg font-bold text-slate-100">Welcome to HPC Designer</h1>
+          <p className="text-xs text-slate-400 mt-2 max-w-lg mx-auto leading-relaxed">
+            Visually design NVIDIA high-performance computing architectures. Drag real hardware components onto the canvas to build server configurations, cluster topologies, and network fabrics.
+          </p>
+        </div>
+
+        {/* How it works */}
+        <div className="px-6 pb-4">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-nvidia-darker border border-slate-700/50 rounded-lg p-3 text-center">
+              <MousePointerClick className="w-5 h-5 text-nvidia-green mx-auto mb-1.5" />
+              <p className="text-[10px] font-semibold text-slate-300">Drag & Drop</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Components from the left palette onto the canvas</p>
+            </div>
+            <div className="bg-nvidia-darker border border-slate-700/50 rounded-lg p-3 text-center">
+              <Network className="w-5 h-5 text-nvidia-green mx-auto mb-1.5" />
+              <p className="text-[10px] font-semibold text-slate-300">Connect</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Link components by dragging between node handles</p>
+            </div>
+            <div className="bg-nvidia-darker border border-slate-700/50 rounded-lg p-3 text-center">
+              <Zap className="w-5 h-5 text-nvidia-green mx-auto mb-1.5" />
+              <p className="text-[10px] font-semibold text-slate-300">Simulate</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Run data-flow simulations with animated visualizations</p>
+            </div>
+            <div className="bg-nvidia-darker border border-slate-700/50 rounded-lg p-3 text-center">
+              <Sparkles className="w-5 h-5 text-nvidia-green mx-auto mb-1.5" />
+              <p className="text-[10px] font-semibold text-slate-300">AI Assistant</p>
+              <p className="text-[9px] text-slate-500 mt-0.5">Ask questions and get design guidance</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-6 border-t border-slate-700" />
+
+        {/* Reference architectures */}
+        <div className="px-6 pt-4 pb-2">
+          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <BookOpen size={12} className="text-nvidia-green" />
+            Start from a Reference Architecture
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-2 min-h-0">
+          {archs.map((arch) => (
+            <button
+              key={arch.id}
+              onClick={() => onLoadArch(arch)}
+              className="w-full bg-nvidia-darker border border-slate-700 rounded-lg p-3 hover:border-nvidia-green/50 transition-colors text-left group"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-semibold text-slate-200 group-hover:text-nvidia-green transition-colors">{arch.name}</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed line-clamp-2">{arch.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {arch.tags.slice(0, 4).map((tag, i) => (
+                      <span key={i} className="text-[8px] px-1.5 py-0.5 bg-nvidia-green/10 text-nvidia-green/70 rounded">{tag}</span>
+                    ))}
+                    <span className="text-[8px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400/70 rounded">{arch.layer}</span>
+                  </div>
+                </div>
+                <PlayCircle size={18} className="text-slate-600 group-hover:text-nvidia-green transition-colors flex-shrink-0" />
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Start blank */}
+        <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
+          <p className="text-[10px] text-slate-500">Or build from scratch with the component palette</p>
+          <button
+            onClick={onStartBlank}
+            className="px-4 py-2 text-xs font-semibold text-slate-300 border border-slate-600 rounded-lg hover:border-nvidia-green hover:text-nvidia-green transition-colors"
+          >
+            Start with Blank Canvas
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReferenceArchitectureModal({ archs, onLoad, onClose }: { archs: ReferenceArchitecture[]; onLoad: (arch: ReferenceArchitecture) => void; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -318,8 +413,10 @@ export default function App() {
   const setNodes = useDesignStore((s) => s.setNodes);
   const setEdges = useDesignStore((s) => s.setEdges);
 
+  const nodes = useDesignStore((s) => s.nodes);
   const activeSidebarPanel = useDesignStore((s) => s.activeSidebarPanel);
   const setActiveSidebarPanel = useDesignStore((s) => s.setActiveSidebarPanel);
+  const [showWelcome, setShowWelcome] = useState(true);
   const [showRefArchs, setShowRefArchs] = useState(false);
   const [activeArch, setActiveArch] = useState<ReferenceArchitecture | null>(null);
   const referenceArchitectures = useMemo(() => buildReferenceArchitectures(), []);
@@ -332,6 +429,7 @@ export default function App() {
     setActiveArch(arch);
     setActiveSidebarPanel('rationale');
     setShowRefArchs(false);
+    setShowWelcome(false);
   }, [setConfigName, setCurrentLayer, setNodes, setEdges, setActiveSidebarPanel]);
 
   const handleExport = useCallback(() => {
@@ -533,6 +631,14 @@ export default function App() {
             Open Source on GitHub
           </a>
         </footer>
+
+        {showWelcome && nodes.length === 0 && (
+          <WelcomeModal
+            archs={referenceArchitectures}
+            onLoadArch={handleLoadArch}
+            onStartBlank={() => setShowWelcome(false)}
+          />
+        )}
 
         {showRefArchs && (
           <ReferenceArchitectureModal
